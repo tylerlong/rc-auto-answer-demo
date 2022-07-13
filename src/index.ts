@@ -19,12 +19,10 @@ const main = async () => {
     password: process.env.RINGCENTRAL_PASSWORD!,
   });
 
-  const r = await rc.post('/restapi/v1.0/account/~/telephony/conference', {});
-  const conferenceSession = (r.data as any).session as CallSessionObject;
-  console.log(JSON.stringify(conferenceSession, null, 2));
-
   const pubnubExtension = new PubNubExtension();
   await rc.installExtension(pubnubExtension);
+  let partyId = '';
+  let conferenceSessionId = '';
   await pubnubExtension.subscribe(
     ['/restapi/v1.0/account/~/extension/~/telephony/sessions'],
     async (event: ExtensionTelephonySessionsEvent) => {
@@ -33,25 +31,37 @@ const main = async () => {
       const parties = event.body!.parties!;
       for (const party of parties) {
         if (
-          party.direction !== 'Inbound' ||
-          party.status?.code !== 'Proceeding'
+          conferenceSessionId === '' &&
+          party.direction === 'Inbound' &&
+          party.status?.code === 'Answered'
         ) {
-          continue;
+          partyId = party.id!;
+          const r = await rc.post(
+            '/restapi/v1.0/account/~/telephony/conference',
+            {}
+          );
+          const conferenceSession = (r.data as any)
+            .session as CallSessionObject;
+          console.log(JSON.stringify(conferenceSession, null, 2));
+          conferenceSessionId = conferenceSession.id!;
+        } else if (
+          party.direction === 'Outbound' &&
+          party.status?.code === 'Answered' &&
+          party.to?.name === 'Conference'
+        ) {
+          const callParty = await rc
+            .restapi()
+            .account()
+            .telephony()
+            .sessions(conferenceSessionId)
+            .parties()
+            .bringIn()
+            .post({
+              telephonySessionId,
+              partyId,
+            });
+          console.log(JSON.stringify(callParty, null, 2));
         }
-        const partyId = party.id;
-        const callParty = await rc
-          .restapi()
-          .account()
-          .telephony()
-          .sessions(conferenceSession.id)
-          .parties()
-          .bringIn()
-          .post({
-            telephonySessionId,
-            partyId,
-          });
-        console.log(JSON.stringify(callParty, null, 2));
-        break;
       }
     }
   );
