@@ -1,8 +1,6 @@
 import RingCentral from '@rc-ex/core';
-import {
-  CallSessionObject,
-  ExtensionTelephonySessionsEvent,
-} from '@rc-ex/core/lib/definitions';
+import CallSessionObject from '@rc-ex/core/lib/definitions/CallSessionObject';
+import ExtensionTelephonySessionsEvent from '@rc-ex/core/lib/definitions/ExtensionTelephonySessionsEvent';
 import PubNubExtension from '@rc-ex/pubnub';
 import waitFor from 'wait-for-async';
 
