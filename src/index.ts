@@ -4,6 +4,8 @@ import ExtensionTelephonySessionsEvent from '@rc-ex/core/lib/definitions/Extensi
 import PubNubExtension from '@rc-ex/pubnub';
 import waitFor from 'wait-for-async';
 import Softphone from 'ringcentral-softphone';
+import RTCAudioStreamSource from 'node-webrtc-audio-stream-source';
+import wrtc from 'wrtc';
 
 const rc = new RingCentral({
   server: process.env.RINGCENTRAL_SERVER_URL,
@@ -16,6 +18,19 @@ let conferenceReady = false;
 let conferenceSessionId = '';
 const processedTelephonySessionIds = new Set();
 
+const rtcAudioStreamSource = new RTCAudioStreamSource();
+const track = rtcAudioStreamSource.createTrack();
+const inputAudioStream = new wrtc.MediaStream();
+inputAudioStream.addTrack(track);
+const newSoftPhone = async (rc: RingCentral) => {
+  const softphone = new Softphone(rc);
+  await softphone.register();
+  softphone.on('INVITE', async (sipMessage: any) => {
+    softphone.answer(sipMessage); // auto answer incoming call
+  });
+  return softphone;
+};
+
 const main = async () => {
   await rc.authorize({
     username: process.env.RINGCENTRAL_USERNAME!,
@@ -23,9 +38,7 @@ const main = async () => {
     password: process.env.RINGCENTRAL_PASSWORD!,
   });
 
-  const softphone = new Softphone(rc);
-  await softphone.register();
-
+  const softphone = await newSoftPhone(rc);
   const pubnubExtension = new PubNubExtension();
   await rc.installExtension(pubnubExtension);
   await pubnubExtension.subscribe(
@@ -53,7 +66,11 @@ const main = async () => {
               .session as CallSessionObject;
             console.log(JSON.stringify(conferenceSession, null, 2));
             conferenceSessionId = conferenceSession.id!;
-            softphone.invite(conferenceSession.voiceCallToken);
+            // make a phone call to the conference voiceCallToken
+            softphone.invite(
+              conferenceSession.voiceCallToken,
+              inputAudioStream
+            );
           }
           await waitFor({
             interval: 1000,
