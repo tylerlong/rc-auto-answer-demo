@@ -1,5 +1,8 @@
 # RingCentral Conference Demo
 
+- Ref: https://developers.ringcentral.com/guide/voice/conference#request
+- Ref: https://medium.com/@tylerlong/host-a-ringcentral-conference-by-invoking-api-cc92bd7e6179
+
 
 ## Setup
 
