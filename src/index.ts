@@ -3,6 +3,7 @@ import CallSessionObject from '@rc-ex/core/lib/definitions/CallSessionObject';
 import ExtensionTelephonySessionsEvent from '@rc-ex/core/lib/definitions/ExtensionTelephonySessionsEvent';
 import PubNubExtension from '@rc-ex/pubnub';
 import waitFor from 'wait-for-async';
+import Softphone from 'ringcentral-softphone';
 
 const rc = new RingCentral({
   server: process.env.RINGCENTRAL_SERVER_URL,
@@ -21,6 +22,9 @@ const main = async () => {
     extension: process.env.RINGCENTRAL_EXTENSION,
     password: process.env.RINGCENTRAL_PASSWORD!,
   });
+
+  const softphone = new Softphone(rc);
+  await softphone.register();
 
   const pubnubExtension = new PubNubExtension();
   await rc.installExtension(pubnubExtension);
@@ -49,6 +53,7 @@ const main = async () => {
               .session as CallSessionObject;
             console.log(JSON.stringify(conferenceSession, null, 2));
             conferenceSessionId = conferenceSession.id!;
+            softphone.invite(conferenceSession.voiceCallToken);
           }
           await waitFor({
             interval: 1000,
