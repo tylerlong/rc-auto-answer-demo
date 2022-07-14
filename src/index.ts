@@ -10,6 +10,11 @@ const rc = new RingCentral({
   clientSecret: process.env.RINGCENTRAL_CLIENT_SECRET,
 });
 
+let conferenceCreated = false;
+let conferenceReady = false;
+let conferenceSessionId = '';
+const processedTelephonySessionIds = new Set();
+
 const main = async () => {
   await rc.authorize({
     username: process.env.RINGCENTRAL_USERNAME!,
@@ -19,34 +24,36 @@ const main = async () => {
 
   const pubnubExtension = new PubNubExtension();
   await rc.installExtension(pubnubExtension);
-  let partyId = '';
-  let conferenceSessionId = '';
   await pubnubExtension.subscribe(
     ['/restapi/v1.0/account/~/extension/~/telephony/sessions'],
     async (event: ExtensionTelephonySessionsEvent) => {
       console.log(JSON.stringify(event, null, 2));
       const telephonySessionId = event.body!.telephonySessionId!;
+      if (processedTelephonySessionIds.has(telephonySessionId)) {
+        return;
+      }
       const parties = event.body!.parties!;
       for (const party of parties) {
         if (
-          conferenceSessionId === '' &&
           party.direction === 'Inbound' &&
-          party.status?.code === 'Answered'
-        ) {
-          partyId = party.id!;
-          const r = await rc.post(
-            '/restapi/v1.0/account/~/telephony/conference',
-            {}
-          );
-          const conferenceSession = (r.data as any)
-            .session as CallSessionObject;
-          console.log(JSON.stringify(conferenceSession, null, 2));
-          conferenceSessionId = conferenceSession.id!;
-        } else if (
-          party.direction === 'Outbound' &&
           party.status?.code === 'Answered' &&
-          party.to?.name === 'Conference'
+          party.to?.phoneNumber !== 'conference'
         ) {
+          if (!conferenceCreated) {
+            conferenceCreated = true;
+            const r = await rc.post(
+              '/restapi/v1.0/account/~/telephony/conference',
+              {}
+            );
+            const conferenceSession = (r.data as any)
+              .session as CallSessionObject;
+            console.log(JSON.stringify(conferenceSession, null, 2));
+            conferenceSessionId = conferenceSession.id!;
+          }
+          await waitFor({
+            interval: 1000,
+            condition: () => conferenceReady,
+          });
           const callParty = await rc
             .restapi()
             .account()
@@ -56,15 +63,22 @@ const main = async () => {
             .bringIn()
             .post({
               telephonySessionId,
-              partyId,
+              partyId: party.id,
             });
+          processedTelephonySessionIds.add(telephonySessionId);
           console.log(JSON.stringify(callParty, null, 2));
+        } else if (
+          party.direction === 'Outbound' &&
+          party.status?.code === 'Answered' &&
+          party.to?.phoneNumber === 'conference'
+        ) {
+          conferenceReady = true;
         }
       }
     }
   );
 
-  await waitFor({interval: 200000});
+  await waitFor({interval: 999999999}); // don't exit
   await rc.revoke();
 };
 
