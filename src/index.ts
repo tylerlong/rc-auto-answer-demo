@@ -12,14 +12,9 @@ const main = async () => {
 
   const pubnubExtension = new PubNubExtension();
   await rc.installExtension(pubnubExtension);
-  let count = 0;
   await pubnubExtension.subscribe(
     ['/restapi/v1.0/account/~/extension/~/telephony/sessions'],
     async (event: ExtensionTelephonySessionsEvent) => {
-      if (event.body!.parties![0].status === 'Setup') {
-        count += 1;
-        console.log(`Received notifications for the ${count}th phone call`);
-      }
       console.log(JSON.stringify(event, null, 2));
     }
   );
