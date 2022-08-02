@@ -15,7 +15,9 @@ const main = async () => {
   await pubnubExtension.subscribe(
     ['/restapi/v1.0/account/~/extension/~/telephony/sessions'],
     async (event: ExtensionTelephonySessionsEvent) => {
+      console.log('callee notification begin');
       console.log(JSON.stringify(event, null, 2));
+      console.log('callee notification end');
     }
   );
 

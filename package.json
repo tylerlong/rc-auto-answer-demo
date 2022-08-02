@@ -1,7 +1,8 @@
 {
   "license": "MIT",
   "scripts": {
-    "test": "ts-node -r dotenv-override-true/config src/index.ts"
+    "caller": "ts-node -r dotenv-override-true/config src/caller.ts",
+    "callee": "ts-node -r dotenv-override-true/config src/callee.ts"
   },
   "dependencies": {
     "@rc-ex/core": "^0.14.0",
