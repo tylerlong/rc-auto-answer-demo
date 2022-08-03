@@ -17,7 +17,7 @@ const main = async () => {
 
   const pubnubExtension = new PubNubExtension();
   await rc.installExtension(pubnubExtension);
-  await pubnubExtension.subscribe(
+  const sub = await pubnubExtension.subscribe(
     ['/restapi/v1.0/account/~/extension/~/telephony/sessions'],
     async (event: ExtensionTelephonySessionsEvent) => {
       console.log('caller notification begin');
@@ -25,6 +25,8 @@ const main = async () => {
       console.log('caller notification end');
     }
   );
+  console.log('Subscription created:');
+  console.log(JSON.stringify(sub.subscriptionInfo, null, 2));
 
   await waitFor({interval: 999999999}); // don't exit
   // await rc.revoke();
